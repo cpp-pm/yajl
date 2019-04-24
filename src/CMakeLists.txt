@@ -12,6 +12,28 @@
 # ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
 # OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
 
+include(GNUInstallDirs)
+
+set(config_install_dir "${CMAKE_INSTALL_LIBDIR}/cmake/YAJL")
+
+set(generated_dir "${CMAKE_CURRENT_BINARY_DIR}/generated")
+
+set(version_config "${generated_dir}/YAJLConfigVersion.cmake")
+set(project_config "${generated_dir}/YAJLConfig.cmake")
+set(TARGETS_EXPORT_NAME "YAJLTargets")
+
+include(CMakePackageConfigHelpers)
+
+write_basic_package_version_file(
+    "${version_config}" COMPATIBILITY SameMajorVersion
+)
+
+configure_package_config_file(
+    "cmake/Config.cmake.in"
+    "${project_config}"
+    INSTALL_DESTINATION "${config_install_dir}"
+)
+
 SET (SRCS yajl.c yajl_lex.c yajl_parser.c yajl_buf.c
           yajl_encode.c yajl_gen.c yajl_alloc.c
           yajl_tree.c yajl_version.c
@@ -35,9 +57,7 @@ SET (shareDir ${CMAKE_CURRENT_BINARY_DIR}/../${YAJL_DIST_NAME}/share/pkgconfig)
 # set the output path for libraries
 SET(LIBRARY_OUTPUT_PATH ${libDir})
 
-ADD_LIBRARY(yajl_s STATIC ${SRCS} ${HDRS} ${PUB_HDRS})
-
-ADD_LIBRARY(yajl SHARED ${SRCS} ${HDRS} ${PUB_HDRS})
+ADD_LIBRARY(yajl ${SRCS} ${HDRS} ${PUB_HDRS})
 
 #### setup shared library version number
 SET_TARGET_PROPERTIES(yajl PROPERTIES
@@ -68,20 +88,27 @@ FOREACH (header ${PUB_HDRS})
   SET (header ${CMAKE_CURRENT_SOURCE_DIR}/${header})
 
   EXEC_PROGRAM(${CMAKE_COMMAND} ARGS -E copy_if_different ${header} ${incDir})
-
-  ADD_CUSTOM_COMMAND(TARGET yajl_s POST_BUILD
-      COMMAND ${CMAKE_COMMAND} -E copy_if_different ${header} ${incDir})
 ENDFOREACH (header ${PUB_HDRS})
 
 INCLUDE_DIRECTORIES(${incDir}/..)
 
-# at build time you may specify the cmake variable LIB_SUFFIX to handle
-# 64-bit systems which use 'lib64'
 INSTALL(TARGETS yajl
-        RUNTIME DESTINATION lib${LIB_SUFFIX}
-        LIBRARY DESTINATION lib${LIB_SUFFIX}
-        ARCHIVE DESTINATION lib${LIB_SUFFIX})
-INSTALL(TARGETS yajl_s ARCHIVE DESTINATION lib${LIB_SUFFIX})
-INSTALL(FILES ${PUB_HDRS} DESTINATION include/yajl)
-INSTALL(FILES ${incDir}/yajl_version.h DESTINATION include/yajl)
-INSTALL(FILES ${shareDir}/yajl.pc DESTINATION share/pkgconfig)
+        EXPORT "${TARGETS_EXPORT_NAME}"
+        RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}"
+        LIBRARY DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        ARCHIVE DESTINATION "${CMAKE_INSTALL_LIBDIR}"
+        INCLUDES DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}")
+INSTALL(FILES ${PUB_HDRS} DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/yajl")
+INSTALL(FILES ${incDir}/yajl_version.h DESTINATION "${CMAKE_INSTALL_INCLUDEDIR}/yajl")
+INSTALL(FILES ${shareDir}/yajl.pc DESTINATION "${CMAKE_INSTALL_DATAROOTDIR}/pkgconfig")
+
+install(
+    FILES "${project_config}" "${version_config}"
+    DESTINATION "${config_install_dir}"
+)
+
+install(
+    EXPORT "${TARGETS_EXPORT_NAME}"
+    NAMESPACE "YAJL::"
+    DESTINATION "${config_install_dir}"
+)
